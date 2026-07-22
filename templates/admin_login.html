@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Admin — WeSafe</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body class="admin-body">
+
+<div class="ambient-bg"><div class="ambient-blob orange"></div><div class="ambient-blob purple"></div></div>
+
+<div class="admin-login-wrap">
+    <div class="admin-login-box card pop-in page-transition-in">
+        <div class="badge-top"><i class="fa-solid fa-user-gear"></i></div>
+        <h2>Painel Admin</h2>
+        <p class="sub">Acesso restrito à equipe WeSafe</p>
+
+        <form id="adminLoginForm" novalidate>
+            <div class="field" id="fieldEmail">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="email" placeholder="Email de administrador" required autocomplete="username">
+            </div>
+            <p class="field-error">Informe um email válido.</p>
+
+            <div class="field" id="fieldPass">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="password" placeholder="Senha" required autocomplete="current-password">
+                <i class="fa-solid fa-eye toggle-pass" id="togglePass"></i>
+            </div>
+            <p class="field-error">Digite sua senha.</p>
+
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <span class="btn-label"><i class="fa-solid fa-right-to-bracket"></i> Entrar no painel</span>
+            </button>
+        </form>
+
+        <p class="text-faint" style="text-align:center; font-size:12px; margin-top:18px;">
+            Voltar para o <a href="{{ url_for('entrada') }}" style="color:var(--orange); font-weight:800; text-decoration:none;">app WeSafe</a>
+        </p>
+    </div>
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toastMsg"></span></div>
+
+<script>
+    const API_BASE = "";
+
+    function showToast(msg, type = "success") {
+        const toast = document.getElementById("toast");
+        const icon = toast.querySelector("i");
+        const msgEl = document.getElementById("toastMsg");
+        toast.className = "toast show " + type;
+        icon.className = type === "error" ? "fa-solid fa-circle-exclamation" : "fa-solid fa-circle-check";
+        msgEl.textContent = msg;
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    document.getElementById("togglePass").addEventListener("click", (e) => {
+        const input = document.getElementById("password");
+        const isPass = input.type === "password";
+        input.type = isPass ? "text" : "password";
+        e.target.classList.toggle("fa-eye");
+        e.target.classList.toggle("fa-eye-slash");
+    });
+
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    if (localStorage.getItem("wesafe_admin_token")) {
+        window.location.href = {{ url_for('admin_dashboard')|tojson }};
+    }
+
+    document.getElementById("adminLoginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const emailOk = validEmail(email);
+        const passOk = password.length > 0;
+        document.getElementById("fieldEmail").classList.toggle("invalid", !emailOk);
+        document.getElementById("fieldPass").classList.toggle("invalid", !passOk);
+        if (!emailOk || !passOk) return;
+
+        const btn = document.getElementById("submitBtn");
+        const label = btn.querySelector(".btn-label");
+        btn.disabled = true;
+        label.innerHTML = '<span class="spinner"></span> Entrando...';
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/admin/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Credenciais inválidas.");
+
+            localStorage.setItem("wesafe_admin_token", data.access_token);
+            localStorage.setItem("wesafe_admin_name", data.profile.nome);
+            showToast("Bem-vindo(a)! Redirecionando...", "success");
+            setTimeout(() => window.location.href = {{ url_for('admin_dashboard')|tojson }}, 500);
+        } catch (err) {
+            showToast(err.message || "Erro ao entrar.", "error");
+            btn.disabled = false;
+            label.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Entrar no painel';
+        }
+    });
+</script>
+
+</body>
+</html>

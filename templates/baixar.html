@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Baixar o WeSafe — Chegue com segurança, sempre</title>
+<meta name="description" content="Baixe o WeSafe e trace rotas mais seguras com base em relatos reais da comunidade.">
+
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+<style>
+    html { scroll-behavior: smooth; }
+    body { overflow-x: hidden; }
+
+    /* ================= NAV ================= */
+    .dl-nav {
+        position: sticky; top: 0; z-index: 100;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px max(20px, env(safe-area-inset-left)) 16px max(20px, env(safe-area-inset-right));
+        background: rgba(11,13,16,.72);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+        transition: background .3s ease, box-shadow .3s ease;
+    }
+    .dl-nav.scrolled { box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    .dl-nav .brand { display: flex; align-items: center; gap: 9px; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 19px; }
+    .dl-nav .brand i { color: var(--purple); }
+    .dl-nav .brand span { color: var(--orange); }
+    .dl-nav-links { display: flex; align-items: center; gap: 26px; }
+    .dl-nav-links a {
+        color: var(--text-dim); text-decoration: none; font-weight: 700; font-size: 13.5px;
+        position: relative; padding: 4px 0; transition: color .2s ease;
+    }
+    .dl-nav-links a::after {
+        content: ""; position: absolute; left: 0; bottom: -3px; width: 0; height: 2px;
+        background: var(--orange); transition: width .25s cubic-bezier(.21,.87,.35,1);
+    }
+    .dl-nav-links a:hover { color: var(--text); }
+    .dl-nav-links a:hover::after, .dl-nav-links a.current::after { width: 100%; }
+    .dl-nav-links a.current { color: var(--orange); }
+    .dl-nav-cta {
+        background: var(--orange); color: #1a0e00; font-weight: 800; font-size: 13px;
+        padding: 9px 16px; border-radius: var(--radius-pill); text-decoration: none;
+        box-shadow: 0 3px 0 var(--orange-dark); transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .dl-nav-cta:hover { transform: translateY(-1px); box-shadow: 0 5px 0 var(--orange-dark); }
+    .dl-nav-cta:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--orange-dark); }
+    @media (max-width: 720px) { .dl-nav-links a:not(.dl-nav-cta) { display: none; } }
+
+    /* ================= HERO ================= */
+    .dl-hero {
+        position: relative;
+        display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 40px;
+        max-width: 1180px; margin: 0 auto; padding: 64px 24px 40px;
+        min-height: 82vh;
+    }
+    .dl-hero-glow {
+        position: absolute; top: -160px; right: -120px; width: 620px; height: 620px;
+        background: radial-gradient(circle, var(--orange-glow) 0%, transparent 68%);
+        pointer-events: none; z-index: 0;
+    }
+    .dl-hero-glow.two {
+        top: auto; bottom: -220px; left: -160px; right: auto;
+        background: radial-gradient(circle, rgba(139,92,246,.22) 0%, transparent 68%);
+    }
+    .dl-eyebrow {
+        display: inline-flex; align-items: center; gap: 8px; background: var(--card);
+        border: 1px solid var(--border); color: var(--orange); font-weight: 800; font-size: 12.5px;
+        padding: 7px 14px; border-radius: var(--radius-pill); margin-bottom: 20px;
+    }
+    .dl-eyebrow .live-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: live-pulse-dl 1.6s ease-out infinite; }
+    @keyframes live-pulse-dl {
+        0% { box-shadow: 0 0 0 0 rgba(88,204,2,.55); } 70% { box-shadow: 0 0 0 7px rgba(88,204,2,0); } 100% { box-shadow: 0 0 0 0 rgba(88,204,2,0); }
+    }
+    .dl-hero-text { position: relative; z-index: 1; }
+    .dl-hero-text h1 {
+        font-family: 'Baloo 2', sans-serif; font-size: clamp(32px, 4.6vw, 52px); font-weight: 800;
+        line-height: 1.08; margin: 0 0 18px; letter-spacing: -.5px;
+    }
+    .dl-hero-text h1 span { color: var(--orange); display: block; }
+    .dl-hero-text p { color: var(--text-dim); font-size: 16px; font-weight: 600; line-height: 1.6; max-width: 460px; margin: 0 0 30px; }
+
+    .store-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 30px; }
+    .store-badge {
+        display: flex; align-items: center; gap: 12px; background: var(--card); border: 1.5px solid var(--border);
+        border-radius: 14px; padding: 10px 18px; text-decoration: none; color: var(--text);
+        transition: transform .2s cubic-bezier(.21,.87,.35,1), border-color .2s ease, box-shadow .2s ease;
+    }
+    .store-badge:hover { transform: translateY(-3px); border-color: var(--orange); box-shadow: 0 10px 24px rgba(255,140,31,.18); }
+    .store-badge i { font-size: 26px; }
+    .store-badge .store-text { text-align: left; line-height: 1.2; }
+    .store-badge .store-text small { display: block; font-size: 10px; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .store-badge .store-text b { font-size: 15.5px; font-family: 'Baloo 2', sans-serif; }
+
+    .dl-stats-row { display: flex; gap: 26px; flex-wrap: wrap; }
+    .dl-stat b { display: block; font-family: 'Baloo 2', sans-serif; font-size: 22px; font-weight: 800; color: var(--text); }
+    .dl-stat span { font-size: 12px; color: var(--text-faint); font-weight: 700; }
+
+    /* --------- Phone mockup (hero, splash estático) --------- */
+    .phone-shell {
+        position: relative; z-index: 1; width: 100%; max-width: 300px; margin: 0 auto;
+        aspect-ratio: 300 / 610;
+        animation: phone-float 5s ease-in-out infinite;
+    }
+    @keyframes phone-float { 0%, 100% { transform: translateY(0) rotate(-1.2deg); } 50% { transform: translateY(-14px) rotate(1.2deg); } }
+
+    .phone-frame {
+        position: relative; width: 100%; height: 100%; border-radius: 42px;
+        background: #05060a; border: 3px solid #1c2027; box-shadow: 0 30px 70px rgba(0,0,0,.55), 0 0 0 8px #0b0d10;
+        overflow: hidden;
+    }
+    .phone-notch {
+        position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 42%; height: 22px;
+        background: #05060a; border-radius: 0 0 16px 16px; z-index: 5;
+    }
+    .phone-screen {
+        position: absolute; inset: 0; border-radius: 39px; overflow: hidden;
+        background: radial-gradient(circle at 50% 30%, #191225 0%, #0b0d10 70%);
+    }
+
+    .splash-glow {
+        position: absolute; top: 6%; left: 50%; transform: translateX(-50%); width: 260px; height: 260px;
+        background: radial-gradient(circle, var(--orange-glow) 0%, transparent 70%); z-index: 0;
+    }
+    .splash-content {
+        position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; height: 100%; padding: 0 24px; text-align: center;
+    }
+    .splash-badge {
+        width: 64px; height: 64px; border-radius: 20px; margin-bottom: 16px;
+        background: linear-gradient(145deg, var(--purple), var(--purple-dark));
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 0 var(--purple-dark);
+        animation: splash-badge-pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes splash-badge-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    .splash-badge i { font-size: 28px; color: #fff; }
+    .splash-content h3 { font-family: 'Baloo 2', sans-serif; font-size: 21px; font-weight: 800; margin: 0 0 6px; }
+    .splash-content h3 span { color: var(--orange); }
+    .splash-content p { font-size: 12.5px; color: var(--text-dim); font-weight: 600; margin: 0 0 20px; }
+    .splash-content p b { color: var(--orange); }
+    .splash-track { width: 160px; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+    .splash-fill {
+        height: 100%; width: 40%; border-radius: 999px;
+        background: linear-gradient(90deg, var(--purple), var(--orange));
+        animation: splash-loading 1.8s ease-in-out infinite;
+    }
+    @keyframes splash-loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    .splash-pct { margin-top: 8px; font-size: 11px; color: var(--text-faint); font-weight: 700; }
+
+    /* ================= SEÇÃO SCROLL-LINKED ================= */
+    .dl-scroll-section {
+        max-width: 1180px; margin: 0 auto; padding: 20px 24px 40px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+    }
+    .dl-scroll-sticky-col { position: relative; }
+    .dl-scroll-sticky { position: sticky; top: 90px; display: flex; justify-content: center; align-items: center; height: calc(100vh - 130px); }
+
+    .scroll-phone .phone-frame { background: #05060a; }
+    .scroll-phone .phone-screen {
+        background:
+            radial-gradient(circle at 30% 20%, rgba(139,92,246,.22), transparent 45%),
+            radial-gradient(circle at 70% 80%, rgba(255,140,31,.16), transparent 50%),
+            #10131a;
+    }
+    .map-grid {
+        position: absolute; inset: 0; opacity: .35;
+        background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+        background-size: 26px 26px;
+    }
+    #routeSvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #routePath {
+        fill: none; stroke: var(--orange); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round;
+        filter: drop-shadow(0 0 6px rgba(255,140,31,.65));
+    }
+    #routePathBg { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+    .route-pin {
+        position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #fff;
+        box-shadow: 0 3px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); z-index: 3;
+        transition: opacity .3s ease, transform .3s ease;
+    }
+    .route-pin.start { background: var(--green); left: 15%; top: 84%; }
+    .route-pin.end { background: var(--red); left: 82%; top: 15%; opacity: 0; }
+    .route-pin.end.reveal { opacity: 1; animation: pin-pop .4s cubic-bezier(.21,.87,.35,1); }
+    @keyframes pin-pop { 0% { transform: translate(-50%,-50%) scale(.4); } 60% { transform: translate(-50%,-50%) scale(1.25); } 100% { transform: translate(-50%,-50%) scale(1); } }
+
+    .phone-ui-top {
+        position: absolute; top: 30px; left: 14px; right: 14px; z-index: 4;
+        display: flex; gap: 8px; justify-content: center;
+    }
+    .phone-ui-chip {
+        background: rgba(20,23,28,.85); backdrop-filter: blur(6px); border: 1px solid var(--border);
+        border-radius: var(--radius-pill); padding: 6px 12px; font-size: 10.5px; font-weight: 800; color: var(--text-dim);
+        display: flex; align-items: center; gap: 5px;
+    }
+    .phone-ui-chip i { color: var(--gold); font-size: 11px; }
+
+    .phone-ui-bottom {
+        position: absolute; left: 12px; right: 12px; bottom: 22px; z-index: 4;
+        background: rgba(20,23,28,.88); backdrop-filter: blur(8px); border: 1px solid var(--border);
+        border-radius: 18px; padding: 14px 16px; opacity: 0; transform: translateY(16px);
+        transition: opacity .4s cubic-bezier(.21,.87,.35,1), transform .4s cubic-bezier(.21,.87,.35,1);
+    }
+    .phone-ui-bottom.reveal { opacity: 1; transform: translateY(0); }
+    .phone-ui-bottom .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .phone-ui-bottom .dist { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 18px; }
+    .phone-ui-bottom .risk-tag { font-size: 9.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: rgba(88,204,2,.16); color: var(--green); text-transform: uppercase; }
+    .phone-ui-bottom .sub { font-size: 11px; color: var(--text-dim); font-weight: 600; }
+
+    .dl-steps-col { display: flex; flex-direction: column; gap: 0; padding-top: 6vh; }
+    .dl-step {
+        min-height: 62vh; display: flex; flex-direction: column; justify-content: center;
+        opacity: .32; transform: translateX(14px) scale(.98); transition: opacity .45s ease, transform .45s cubic-bezier(.21,.87,.35,1);
+    }
+    .dl-step.active { opacity: 1; transform: translateX(0) scale(1); }
+    .dl-step .step-num {
+        width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        background: var(--orange-glow); color: var(--orange); font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 16px;
+        margin-bottom: 16px; transition: background .3s ease, color .3s ease;
+    }
+    .dl-step.active .step-num { background: var(--orange); color: #1a0e00; }
+    .dl-step h3 { font-family: 'Baloo 2', sans-serif; font-size: 24px; font-weight: 800; margin: 0 0 10px; }
+    .dl-step p { color: var(--text-dim); font-size: 14.5px; font-weight: 600; line-height: 1.6; max-width: 380px; margin: 0; }
+
+    @media (max-width: 900px) {
+        .dl-hero { grid-template-columns: 1fr; padding-top: 40px; min-height: auto; text-align: center; }
+        .dl-hero-text p { margin-left: auto; margin-right: auto; }
+        .store-row, .dl-stats-row { justify-content: center; }
+        .dl-scroll-section { grid-template-columns: 1fr; gap: 10px; }
+        .dl-scroll-sticky { position: sticky; top: 76px; height: 58vh; margin-bottom: 6px; }
+        .dl-steps-col { padding-top: 12px; }
+        .dl-step { min-height: 46vh; }
+        .phone-shell { max-width: 220px; }
+    }
+
+    /* ================= CTA FINAL ================= */
+    .dl-final {
+        position: relative; max-width: 1180px; margin: 40px auto 0; padding: 70px 24px;
+        text-align: center; overflow: hidden;
+    }
+    .dl-final-card {
+        position: relative; border-radius: var(--radius-lg); border: 1px solid var(--border);
+        background: linear-gradient(160deg, var(--card), var(--bg-soft));
+        padding: 56px 28px; overflow: hidden;
+    }
+    .dl-final-card::before {
+        content: ""; position: absolute; inset: 0;
+        background: radial-gradient(circle at 20% 20%, var(--orange-glow), transparent 55%),
+                    radial-gradient(circle at 85% 80%, rgba(139,92,246,.22), transparent 55%);
+        pointer-events: none;
+    }
+    .dl-final-card h2 { position: relative; font-family: 'Baloo 2', sans-serif; font-size: clamp(26px, 3.6vw, 38px); font-weight: 800; margin: 0 0 12px; }
+    .dl-final-card p { position: relative; color: var(--text-dim); font-weight: 600; font-size: 15px; margin: 0 0 30px; }
+    .dl-final-card .store-row { position: relative; justify-content: center; }
+
+    footer.dl-footer { text-align: center; padding: 34px 24px 50px; color: var(--text-faint); font-size: 12.5px; font-weight: 600; }
+    footer.dl-footer a { color: var(--text-dim); text-decoration: none; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<nav class="dl-nav" id="dlNav">
+    <a href="{{ url_for('entrada') }}" class="brand" style="text-decoration:none; color:var(--text);">
+        <i class="fa-solid fa-shield-halved"></i> We<span>Safe</span>
+    </a>
+    <div class="dl-nav-links">
+        <a href="{{ url_for('entrada') }}">Início</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#baixar" class="current">Baixar</a>
+        <a href="{{ url_for('login') }}" class="dl-nav-cta">Acesse de qualquer lugar</a>
+    </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<section class="dl-hero">
+    <div class="dl-hero-glow"></div>
+    <div class="dl-hero-glow two"></div>
+
+    <div class="dl-hero-text fade-in-up">
+        <span class="dl-eyebrow"><span class="live-pip"></span> Comunidade ativa 24h por dia</span>
+        <h1>Chegue com segurança. <span>Sempre.</span></h1>
+        <p>O WeSafe traça a rota mais segura com base em relatos reais da comunidade — em tempo real, com você a cada passo do trajeto.</p>
+
+        <div class="store-row" id="heroStoreRow">
+            <a href="#" class="store-badge">
+                <i class="fa-brands fa-google-play" style="color:#01875f;"></i>
+                <span class="store-text"><small>Disponível no</small><b>Google Play</b></span>
+            </a>
+            <a href="#" class="store-badge">
+                <i class="fa-brands fa-apple" style="color:#fff;"></i>
+                <span class="store-text"><small>Baixar na</small><b>App Store</b></span>
+            </a>
+        </div>
+
+        <div class="dl-stats-row">
+            <div class="dl-stat"><b>+50 mil</b><span>Guardiões ativos</span></div>
+            <div class="dl-stat"><b>+120 mil</b><span>Relatos enviados</span></div>
+            <div class="dl-stat"><b>4.8 ★</b><span>Avaliação média</span></div>
+        </div>
+    </div>
+
+    <div class="phone-shell">
+        <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+                <div class="splash-glow"></div>
+                <div class="splash-content">
+                    <div class="splash-badge"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h3>We<span>Safe</span></h3>
+                    <p>Calculando sua melhor <b>rota segura</b>...</p>
+                    <div class="splash-track"><div class="splash-fill"></div></div>
+                    <div class="splash-pct">Analisando dados de risco · 73%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ================= COMO FUNCIONA (scroll-linked) ================= -->
+<section class="dl-scroll-section" id="como-funciona">
+
+    <div class="dl-scroll-sticky-col">
+        <div class="dl-scroll-sticky">
+            <div class="phone-shell scroll-phone" style="animation:none;">
+                <div class="phone-frame">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+                        <div class="map-grid"></div>
+
+                        <svg id="routeSvg" viewBox="0 0 300 610" preserveAspectRatio="none">
+                            <path id="routePathBg" d="M45,512 C95,430 55,360 130,330 C205,300 175,220 190,170 C200,135 230,110 255,92"></path>
+                            <path id="routePath" d="M45,512 C95,430 55,360 130,330 C205,300 175,220 190,170 C200,135 230,110 255,92"></path>
+                        </svg>
+
+                        <div class="route-pin start"></div>
+                        <div class="route-pin end" id="routePinEnd"></div>
+
+                        <div class="phone-ui-top">
+                            <div class="phone-ui-chip"><i class="fa-solid fa-star"></i> Nível 7</div>
+                            <div class="phone-ui-chip"><i class="fa-solid fa-fire"></i> 12 dias</div>
+                        </div>
+
+                        <div class="phone-ui-bottom" id="phoneUiBottom">
+                            <div class="row-top">
+                                <span class="dist">4.2 km</span>
+                                <span class="risk-tag">Risco baixo</span>
+                            </div>
+                            <span class="sub"><i class="fa-solid fa-flag-checkered"></i> Chegada às 18:42 · rota mais segura</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dl-steps-col" id="stepsCol">
+        <div class="dl-step" data-step="0">
+            <div class="step-num">1</div>
+            <h3>Diga para onde você vai</h3>
+            <p>Digite o destino e o WeSafe já começa a analisar as ruas ao redor com base em relatos recentes da comunidade.</p>
+        </div>
+        <div class="dl-step" data-step="1">
+            <div class="step-num">2</div>
+            <h3>Veja o risco de cada caminho</h3>
+            <p>Cada rota recebe uma nota de segurança calculada a partir de assaltos, iluminação ruim e outras ocorrências próximas.</p>
+        </div>
+        <div class="dl-step" data-step="2">
+            <div class="step-num">3</div>
+            <h3>Siga a rota mais segura</h3>
+            <p>Navegação em tempo real com voz, velocímetro e alertas — sempre priorizando o trajeto mais protegido, não só o mais rápido.</p>
+        </div>
+        <div class="dl-step" data-step="3">
+            <div class="step-num">4</div>
+            <h3>Ganhe XP e proteja a comunidade</h3>
+            <p>Relate ocorrências no caminho, suba de nível e ajude milhares de pessoas a chegarem em segurança todos os dias.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ================= CTA FINAL ================= -->
+<section class="dl-final" id="baixar">
+    <div class="dl-final-card fade-in-up">
+        <h2>Pronto para chegar com mais segurança?</h2>
+        <p>Baixe o WeSafe gratuitamente e comece a usar agora mesmo.</p>
+        <div class="store-row">
+            <a href="#" class="store-badge">
+                <i class="fa-brands fa-google-play" style="color:#01875f;"></i>
+                <span class="store-text"><small>Disponível no</small><b>Google Play</b></span>
+            </a>
+            <a href="#" class="store-badge">
+                <i class="fa-brands fa-apple" style="color:#fff;"></i>
+                <span class="store-text"><small>Baixar na</small><b>App Store</b></span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer class="dl-footer">
+    &copy; <span id="yearNow"></span> WeSafe · <a href="{{ url_for('entrada') }}">Início</a> · <a href="{{ url_for('login') }}">Entrar</a> · <a href="{{ url_for('registro') }}">Criar conta</a>
+</footer>
+
+<script>
+    document.getElementById("yearNow").textContent = new Date().getFullYear();
+
+    // ---------- Navbar: sombra ao rolar ----------
+    const nav = document.getElementById("dlNav");
+    function onNavScroll() { nav.classList.toggle("scrolled", window.scrollY > 12); }
+    window.addEventListener("scroll", onNavScroll, { passive: true });
+    onNavScroll();
+
+    // ---------- Animação de entrada (Intersection Observer) ----------
+    const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add("fade-in-up");
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: .2 });
+    document.querySelectorAll(".dl-stat, .store-badge").forEach((elX) => revealObserver.observe(elX));
+
+    // ---------- Rota desenhando-se conforme o scroll ----------
+    const scrollSection = document.getElementById("como-funciona");
+    const routePath = document.getElementById("routePath");
+    const routePinEnd = document.getElementById("routePinEnd");
+    const phoneUiBottom = document.getElementById("phoneUiBottom");
+    const steps = Array.from(document.querySelectorAll(".dl-step"));
+
+    const pathLength = routePath.getTotalLength();
+    routePath.style.strokeDasharray = `${pathLength}`;
+    routePath.style.strokeDashoffset = `${pathLength}`;
+
+    let ticking = false;
+
+    function updateScrollProgress() {
+        ticking = false;
+        const rect = scrollSection.getBoundingClientRect();
+        const sectionHeight = scrollSection.offsetHeight - window.innerHeight;
+        if (sectionHeight <= 0) return;
+
+        // progresso de 0 a 1 conforme a seção passa pela viewport
+        let progress = (-rect.top) / sectionHeight;
+        progress = Math.max(0, Math.min(1, progress));
+
+        // desenha a rota progressivamente (com uma pequena folga no fim para o pino "chegar")
+        const drawProgress = Math.min(1, progress / 0.92);
+        routePath.style.strokeDashoffset = `${pathLength * (1 - drawProgress)}`;
+
+        routePinEnd.classList.toggle("reveal", progress > 0.85);
+        phoneUiBottom.classList.toggle("reveal", progress > 0.9);
+
+        // realça a etapa de texto correspondente ao progresso atual
+        const activeIndex = Math.min(steps.length - 1, Math.floor(progress * steps.length));
+        steps.forEach((step, i) => step.classList.toggle("active", i === activeIndex));
+    }
+
+    function requestScrollTick() {
+        if (!ticking) {
+            requestAnimationFrame(updateScrollProgress);
+            ticking = true;
+        }
+    }
+
+    window.addEventListener("scroll", requestScrollTick, { passive: true });
+    window.addEventListener("resize", requestScrollTick);
+    updateScrollProgress();
+</script>
+
+</body>
+</html>

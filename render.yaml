@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: wesafe
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: STRICT_SECRETS
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///wesafe.db
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MAPBOX_TOKEN
+        sync: false
+      - key: OSRM_BASE_URL
+        value: https://routing.openstreetmap.de
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_USE_TLS
+        value: "true"
+      - key: SMTP_FROM
+        sync: false
+      - key: OTP_TTL_MINUTES
+        value: "10"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Administrador WeSafe

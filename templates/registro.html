@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Criar conta — WeSafe</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
+<style>
+    body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 30px 18px;
+    }
+    .register-box { width: 100%; max-width: 400px; padding: 34px 26px 30px; position: relative; z-index: 1; }
+
+    .badge-top {
+        width: 64px; height: 64px; border-radius: 18px;
+        background: linear-gradient(145deg, var(--orange), var(--orange-dark));
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 18px;
+        box-shadow: 0 6px 0 var(--orange-dark);
+    }
+    .badge-top i { font-size: 28px; color: #1a0e00; }
+
+    .register-box h2 { margin: 0 0 4px; font-family: 'Baloo 2', sans-serif; font-size: 26px; font-weight: 800; text-align: center; }
+    .register-box .sub { text-align: center; color: var(--text-dim); font-size: 14px; font-weight: 600; margin: 0 0 24px; }
+
+    .separator { text-align: center; color: var(--text-faint); font-size: 12.5px; font-weight: 700; text-transform: uppercase; margin: 20px 0; position: relative; }
+    .separator::before, .separator::after { content: ""; position: absolute; top: 50%; width: 34%; height: 1px; background: var(--border); }
+    .separator::before { left: 0; } .separator::after { right: 0; }
+
+    .strength-row { display: flex; gap: 5px; margin: -8px 0 16px; }
+    .strength-row span { flex: 1; height: 5px; border-radius: 3px; background: var(--border); transition: background .2s ease; }
+
+    .perks {
+        display: flex; flex-direction: column; gap: 10px;
+        margin: 20px 0 6px; padding: 14px 16px; border-radius: var(--radius);
+        background: var(--card); border: 1px solid var(--border);
+    }
+    .perks .perk { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--text-dim); }
+    .perks .perk i { color: var(--gold); width: 18px; text-align: center; }
+
+    .login-link { margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-dim); font-weight: 600; }
+    .login-link a { color: var(--orange); font-weight: 800; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="ambient-bg"><div class="ambient-blob orange"></div><div class="ambient-blob purple"></div></div>
+
+<div class="register-box card pop-in page-transition-in" id="registerBox">
+
+  <div class="badge-top"><i class="fa-solid fa-user-plus"></i></div>
+  <h2>Criar conta</h2>
+  <p class="sub">Junte-se à comunidade WeSafe</p>
+
+  <form id="registerForm" novalidate>
+      <div class="field" id="fieldNome">
+          <i class="fa-solid fa-user"></i>
+          <input type="text" id="nome" placeholder="Nome completo" required autocomplete="name">
+      </div>
+      <p class="field-error">Informe seu nome.</p>
+
+      <div class="field" id="fieldEmail">
+          <i class="fa-solid fa-envelope"></i>
+          <input type="email" id="email" placeholder="Email" required autocomplete="email">
+      </div>
+      <p class="field-error">Informe um email válido.</p>
+
+      <div class="field" id="fieldPass">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="password" placeholder="Senha (mín. 8 caracteres)" required autocomplete="new-password">
+          <i class="fa-solid fa-eye toggle-pass" id="togglePass"></i>
+      </div>
+      <div class="strength-row">
+          <span id="s1"></span><span id="s2"></span><span id="s3"></span><span id="s4"></span>
+      </div>
+      <p class="field-error">A senha deve ter pelo menos 8 caracteres.</p>
+
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+          <span class="btn-label">Criar conta</span>
+      </button>
+  </form>
+
+  <div class="perks">
+      <div class="perk"><i class="fa-solid fa-bolt"></i> Ganhe XP a cada relato enviado</div>
+      <div class="perk"><i class="fa-solid fa-fire"></i> Mantenha sua sequência de segurança</div>
+      <div class="perk"><i class="fa-solid fa-trophy"></i> Suba de nível e vire Guardião</div>
+  </div>
+
+  <p class="login-link">Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></p>
+</div>
+
+<!-- ---------- Etapa 2: verificação por código OTP (enviado por email) ---------- -->
+<div class="register-box card pop-in step-fade" id="otpBox" style="display:none;">
+  <div class="badge-top"><i class="fa-solid fa-envelope-circle-check"></i></div>
+  <h2>Confirme seu email</h2>
+  <p class="sub">Enviamos um código de 6 dígitos para <b id="otpEmailLabel" style="color:var(--text);"></b></p>
+
+  <form id="otpForm" novalidate>
+      <div class="otp-row">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="0">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="1">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="2">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="3">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="4">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-idx="5">
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="otpSubmitBtn">
+          <span class="btn-label"><i class="fa-solid fa-check"></i> Confirmar código</span>
+      </button>
+  </form>
+
+  <p class="otp-resend">Não recebeu? <button type="button" id="resendOtpBtn">Reenviar código</button></p>
+  <p class="login-link"><a href="#" id="backToFormBtn">← Corrigir email ou senha</a></p>
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toastMsg"></span></div>
+
+<script>
+    const API_BASE = "";
+
+    function showToast(msg, type = "success") {
+        const toast = document.getElementById("toast");
+        const icon = toast.querySelector("i");
+        const msgEl = document.getElementById("toastMsg");
+        toast.className = "toast show " + type;
+        icon.className = type === "error" ? "fa-solid fa-circle-exclamation" : "fa-solid fa-circle-check";
+        msgEl.textContent = msg;
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    document.getElementById("togglePass").addEventListener("click", (e) => {
+        const input = document.getElementById("password");
+        const isPass = input.type === "password";
+        input.type = isPass ? "text" : "password";
+        e.target.classList.toggle("fa-eye");
+        e.target.classList.toggle("fa-eye-slash");
+    });
+
+    function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    const passInput = document.getElementById("password");
+    const bars = ["s1", "s2", "s3", "s4"].map(id => document.getElementById(id));
+    passInput.addEventListener("input", () => {
+        const v = passInput.value;
+        let score = 0;
+        if (v.length >= 8) score++;
+        if (/[A-Z]/.test(v)) score++;
+        if (/[0-9]/.test(v)) score++;
+        if (/[^A-Za-z0-9]/.test(v)) score++;
+        const colors = ["var(--red)", "var(--orange)", "var(--gold)", "var(--green)"];
+        bars.forEach((b, i) => b.style.background = i < score ? colors[score - 1] : "var(--border)");
+    });
+
+    function setFieldState(fieldEl, valid) { fieldEl.classList.toggle("invalid", !valid); }
+
+    if (localStorage.getItem("wesafe_token")) {
+        window.location.href = {{ url_for('home')|tojson }};
+    }
+
+    // ---------- Etapa 1: envia os dados e dispara o código OTP por email ----------
+    let pendingNome = "", pendingEmail = "", pendingPassword = "";
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const nome = document.getElementById("nome").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const nomeOk = nome.length >= 2;
+        const emailOk = validEmail(email);
+        const passOk = password.length >= 8;
+
+        setFieldState(document.getElementById("fieldNome"), nomeOk);
+        setFieldState(document.getElementById("fieldEmail"), emailOk);
+        setFieldState(document.getElementById("fieldPass"), passOk);
+
+        if (!nomeOk || !emailOk || !passOk) return;
+
+        const btn = document.getElementById("submitBtn");
+        const label = btn.querySelector(".btn-label");
+        btn.disabled = true;
+        label.innerHTML = '<span class="spinner"></span> Enviando código...';
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nome, email, password })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Não foi possível iniciar o cadastro.");
+
+            pendingNome = nome; pendingEmail = email; pendingPassword = password;
+            showOtpStep(email);
+            showToast("Código enviado! Confira seu email.", "success");
+        } catch (err) {
+            showToast(err.message || "Erro ao registrar. Tente novamente.", "error");
+        } finally {
+            btn.disabled = false;
+            label.textContent = "Criar conta";
+        }
+    });
+
+    // ---------- Etapa 2: tela de verificação do código OTP ----------
+    function showOtpStep(email) {
+        document.getElementById("registerBox").style.display = "none";
+        document.getElementById("otpBox").style.display = "block";
+        document.getElementById("otpEmailLabel").textContent = email;
+        const digits = document.querySelectorAll(".otp-digit");
+        digits.forEach((d) => { d.value = ""; d.classList.remove("filled", "otp-error"); });
+        digits[0].focus();
+    }
+
+    function getOtpCode() {
+        return Array.from(document.querySelectorAll(".otp-digit")).map((d) => d.value).join("");
+    }
+
+    const otpDigits = document.querySelectorAll(".otp-digit");
+    otpDigits.forEach((input, idx) => {
+        input.addEventListener("input", () => {
+            input.value = input.value.replace(/[^0-9]/g, "").slice(0, 1);
+            input.classList.toggle("filled", input.value.length === 1);
+            if (input.value && idx < otpDigits.length - 1) otpDigits[idx + 1].focus();
+            if (getOtpCode().length === 6) document.getElementById("otpForm").requestSubmit();
+        });
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Backspace" && !input.value && idx > 0) otpDigits[idx - 1].focus();
+        });
+        input.addEventListener("paste", (e) => {
+            e.preventDefault();
+            const pasted = (e.clipboardData.getData("text") || "").replace(/[^0-9]/g, "").slice(0, 6);
+            pasted.split("").forEach((ch, i) => { if (otpDigits[i]) { otpDigits[i].value = ch; otpDigits[i].classList.add("filled"); } });
+            if (pasted.length === 6) document.getElementById("otpForm").requestSubmit();
+        });
+    });
+
+    document.getElementById("otpForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const code = getOtpCode();
+        if (code.length !== 6) {
+            otpDigits.forEach((d) => d.classList.add("otp-error"));
+            return;
+        }
+
+        const btn = document.getElementById("otpSubmitBtn");
+        const label = btn.querySelector(".btn-label");
+        btn.disabled = true;
+        label.innerHTML = '<span class="spinner"></span> Verificando...';
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/register/verify-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: pendingEmail, code })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Código inválido.");
+
+            localStorage.setItem("wesafe_token", data.access_token);
+            localStorage.setItem("wesafe_user_id", data.user_id);
+
+            showToast("Conta criada! Bem-vindo ao WeSafe 🎉", "success");
+            setTimeout(() => window.location.href = {{ url_for('home')|tojson }}, 700);
+        } catch (err) {
+            otpDigits.forEach((d) => d.classList.add("otp-error"));
+            setTimeout(() => otpDigits.forEach((d) => d.classList.remove("otp-error")), 400);
+            showToast(err.message || "Código inválido. Tente novamente.", "error");
+            btn.disabled = false;
+            label.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar código';
+        }
+    });
+
+    let resendCooldown = 0, resendTimer = null;
+    function startResendCooldown(seconds) {
+        const btn = document.getElementById("resendOtpBtn");
+        resendCooldown = seconds;
+        btn.disabled = true;
+        clearInterval(resendTimer);
+        resendTimer = setInterval(() => {
+            resendCooldown--;
+            btn.textContent = resendCooldown > 0 ? `Reenviar em ${resendCooldown}s` : "Reenviar código";
+            if (resendCooldown <= 0) { clearInterval(resendTimer); btn.disabled = false; }
+        }, 1000);
+    }
+
+    document.getElementById("resendOtpBtn").addEventListener("click", async () => {
+        if (resendCooldown > 0) return;
+        try {
+            const resp = await fetch(`${API_BASE}/api/register/resend-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: pendingEmail })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || "Não foi possível reenviar o código.");
+            showToast("Novo código enviado!", "success");
+            startResendCooldown(30);
+        } catch (err) {
+            showToast(err.message || "Erro ao reenviar código.", "error");
+        }
+    });
+
+    document.getElementById("backToFormBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("otpBox").style.display = "none";
+        document.getElementById("registerBox").style.display = "block";
+    });
+</script>
+
+</body>
+</html>

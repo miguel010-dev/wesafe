@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Admin — WeSafe</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body class="admin-body">
+
+<div class="page-loader" id="pageLoader"><div class="ring"></div><span>Carregando painel...</span></div>
+
+<header class="admin-topbar">
+    <div class="brand"><i class="fa-solid fa-shield-halved"></i> We<span>Safe</span> · Admin</div>
+    <div class="actions">
+        <div class="admin-chip"><i class="fa-solid fa-user-shield"></i> <span id="adminName">—</span></div>
+        <button class="admin-logout-btn" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+    </div>
+</header>
+
+<main class="admin-main">
+
+    <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-tab="overview">Visão geral</button>
+        <button class="admin-tab-btn" data-tab="users">Usuários</button>
+        <button class="admin-tab-btn" data-tab="reports">Relatos</button>
+    </div>
+
+    <!-- ---------- VISÃO GERAL ---------- -->
+    <section class="admin-tab-panel active" id="tab-overview">
+        <div class="stat-grid stagger-in">
+            <div class="stat-card card">
+                <div class="top"><div class="icon orange"><i class="fa-solid fa-users"></i></div></div>
+                <div class="value" id="statTotalUsers">0</div>
+                <div class="label">Usuários totais</div>
+            </div>
+            <div class="stat-card card">
+                <div class="top"><div class="icon purple"><i class="fa-solid fa-map-location-dot"></i></div></div>
+                <div class="value" id="statTotalReports">0</div>
+                <div class="label">Relatos totais</div>
+            </div>
+            <div class="stat-card card">
+                <div class="top"><div class="icon green"><i class="fa-solid fa-user-plus"></i></div></div>
+                <div class="value" id="statNewUsers">0</div>
+                <div class="label">Novos usuários hoje</div>
+            </div>
+            <div class="stat-card card">
+                <div class="top"><div class="icon red"><i class="fa-solid fa-triangle-exclamation"></i></div></div>
+                <div class="value" id="statReports7d">0</div>
+                <div class="label">Relatos (últimos 7 dias)</div>
+            </div>
+        </div>
+
+        <div class="panel-grid">
+            <div class="panel-box card">
+                <h3><i class="fa-solid fa-layer-group"></i> Relatos por categoria</h3>
+                <div id="categoryBars"></div>
+            </div>
+            <div class="panel-box card">
+                <h3><i class="fa-solid fa-gauge-high"></i> Relatos por nível de risco</h3>
+                <div id="riskBars"></div>
+            </div>
+        </div>
+
+        <div class="panel-grid">
+            <div class="panel-box card">
+                <h3><i class="fa-solid fa-trophy"></i> Top usuários por XP</h3>
+                <div class="table-wrap">
+                    <table class="admin-table">
+                        <thead><tr><th>Nome</th><th>XP</th><th>Relatos</th><th>Sequência</th></tr></thead>
+                        <tbody id="topUsersBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="panel-box card">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> Relatos recentes</h3>
+                <div class="table-wrap">
+                    <table class="admin-table">
+                        <thead><tr><th>Categoria</th><th>Risco</th><th>Local</th><th>Quando</th></tr></thead>
+                        <tbody id="recentReportsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ---------- USUÁRIOS ---------- -->
+    <section class="admin-tab-panel" id="tab-users">
+        <div class="panel-box card">
+            <div class="toolbar">
+                <div class="field"><i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="userSearchInput" placeholder="Buscar por nome ou email...">
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>Nome</th><th>Email</th><th>XP</th><th>Relatos</th><th>Sequência</th><th>Status</th><th>Papel</th><th>Criado em</th><th></th></tr>
+                    </thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button id="usersPrevBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="usersPageLabel">Página 1</span>
+                <button id="usersNextBtn"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ---------- RELATOS ---------- -->
+    <section class="admin-tab-panel" id="tab-reports">
+        <div class="panel-box card">
+            <div class="toolbar">
+                <select id="categoryFilter">
+                    <option value="">Todas as categorias</option>
+                    <option value="assalto">Assalto / Roubo</option>
+                    <option value="suspeito">Atividade suspeita</option>
+                    <option value="ma-iluminacao">Iluminação ruim</option>
+                    <option value="acidente">Acidente</option>
+                    <option value="via-bloqueada">Via bloqueada</option>
+                    <option value="radar">Radar / Blitz</option>
+                    <option value="sos">SOS</option>
+                </select>
+                <select id="riskFilter">
+                    <option value="">Todos os riscos</option>
+                    <option value="1">Baixo</option>
+                    <option value="2">Médio</option>
+                    <option value="3">Alto</option>
+                </select>
+            </div>
+            <div class="table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>ID</th><th>Usuário</th><th>Categoria</th><th>Risco</th><th>Local</th><th>Comentário</th><th>Quando</th><th></th></tr>
+                    </thead>
+                    <tbody id="reportsBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button id="reportsPrevBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="reportsPageLabel">Página 1</span>
+                <button id="reportsNextBtn"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toastMsg"></span></div>
+
+<script>
+    window.WESAFE_ADMIN_CONFIG = {
+        API_BASE: "",
+        LOGIN_URL: "{{ url_for('admin_login') }}"
+    };
+</script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
