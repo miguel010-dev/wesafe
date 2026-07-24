@@ -382,76 +382,6 @@
         .route-distance { font-size: 21px; }
     }
     button, .report-btn, .mode-btn, .route-toggle-btn { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-
-    /* ============================================================
-       ✨ Camada extra de polimento visual — mais ícones, mais vida
-       ============================================================ */
-
-    /* Painéis flutuantes com brilho sutil de borda e leve elevação no hover */
-    .floating-panel { box-shadow: var(--shadow-lg); }
-    .floating-panel:hover { border-color: rgba(255,140,31,.22); }
-
-    /* Chips do topo com leve elevação ao tocar */
-    .stat-chip:active { transform: scale(.95); }
-    .stat-chip.level { box-shadow: 0 4px 14px rgba(139,92,246,.35); }
-    .profile-btn:hover { border-color: var(--orange); color: var(--orange); transform: translateY(-1px); }
-    .profile-btn { transition: transform .18s cubic-bezier(.21,.87,.35,1), color .2s ease, border-color .2s ease; }
-
-    /* Badge circular colorido para os ícones do modo de transporte */
-    .mode-btn .mode-icon-badge {
-        width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        background: var(--card); color: var(--text-dim); font-size: 13px;
-        transition: background .2s ease, color .2s ease, transform .2s cubic-bezier(.21,.87,.35,1);
-    }
-    .mode-btn.active .mode-icon-badge { background: rgba(26,14,0,.18); color: #1a0e00; transform: scale(1.08); }
-    .mode-btn:hover .mode-icon-badge { transform: scale(1.08); }
-
-    /* Badge circular colorido para os ícones de denúncia — mais "iconografia" no painel de relato */
-    .report-btn .report-icon-badge {
-        width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        transition: transform .2s cubic-bezier(.21,.87,.35,1);
-    }
-    .report-btn:hover .report-icon-badge { transform: scale(1.12) rotate(-4deg); }
-    .report-btn.sev-1 .report-icon-badge { background: rgba(88,204,2,.14); }
-    .report-btn.sev-2 .report-icon-badge { background: rgba(255,200,0,.14); }
-    .report-btn.sev-3 .report-icon-badge { background: rgba(255,75,75,.14); }
-    .report-btn.sev-1 .report-icon-badge i { color: var(--green); }
-    .report-btn.sev-2 .report-icon-badge i { color: var(--gold); }
-    .report-btn.sev-3 .report-icon-badge i { color: var(--red); }
-    .report-btn { gap: 10px !important; transition: transform .15s cubic-bezier(.21,.87,.35,1), border-color .2s ease, background .2s ease; }
-    .report-btn:hover { border-color: var(--orange); background: var(--card-hover); }
-
-    /* Botões de controle do mapa: leve brilho ao ativar */
-    .map-control-btn:hover { border-color: var(--orange); color: var(--orange); transform: translateY(-2px); }
-
-    /* Chip de risco da rota com brilho suave contínuo */
-    .route-risk-chip { position: relative; overflow: hidden; }
-    .route-risk-chip::after {
-        content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
-        transform: translateX(-120%); animation: chip-shine 3.2s ease-in-out infinite;
-    }
-    @keyframes chip-shine { 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
-
-    /* Ícone de resultado de busca em círculo (mais destaque na autocomplete) */
-    .autocomplete-item-icon {
-        width: 30px; height: 30px; border-radius: 50%; background: var(--orange-glow);
-        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .autocomplete-item-top { gap: 12px !important; }
-
-    /* SOS com respiro visual mais chamativo (glow pulsante) */
-    .nav-btn-sos { position: relative; }
-    .nav-btn-sos::before {
-        content: ""; position: absolute; top: 2px; width: 34px; height: 34px; border-radius: 50%;
-        background: rgba(255,75,75,.18); animation: sos-glow 1.8s ease-in-out infinite;
-    }
-    @keyframes sos-glow { 0%, 100% { opacity: .5; transform: scale(.9); } 50% { opacity: 0; transform: scale(1.35); } }
-
-    /* Entrada suave dos painéis principais ao carregar a tela */
-    .top-bar, .search-bar, .app-navbar { animation: fade-in-up .5s cubic-bezier(.21,.87,.35,1) both; }
-    .search-bar { animation-delay: .06s; }
-    .app-navbar { animation-delay: .1s; }
-    @keyframes fade-in-up { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 
@@ -512,9 +442,9 @@
     <!-- Seletor de modo de transporte: fica visível tanto na busca quanto com a rota já calculada,
          para permitir trocar entre carro/bike/a pé a qualquer momento (corrige bug de troca de modo). -->
     <div class="mode-row" id="modeRow">
-        <button class="mode-btn active" data-profile="driving"><span class="mode-icon-badge"><i class="fa-solid fa-car"></i></span> Carro</button>
-        <button class="mode-btn" data-profile="cycling"><span class="mode-icon-badge"><i class="fa-solid fa-bicycle"></i></span> Bike</button>
-        <button class="mode-btn" data-profile="walking"><span class="mode-icon-badge"><i class="fa-solid fa-person-walking"></i></span> A pé</button>
+        <button class="mode-btn active" data-profile="driving"><i class="fa-solid fa-car"></i> Carro</button>
+        <button class="mode-btn" data-profile="cycling"><i class="fa-solid fa-bicycle"></i> Bike</button>
+        <button class="mode-btn" data-profile="walking"><i class="fa-solid fa-person-walking"></i> A pé</button>
     </div>
 
     <!-- Estado: selecionar destino -->
@@ -546,12 +476,12 @@
     <div class="panel-content" id="reportPanel">
         <p class="report-xp-hint"><i class="fa-solid fa-bolt"></i> Cada relato confirmado gera XP e ajuda a comunidade</p>
         <div class="report-grid">
-            <button class="report-btn sev-1" data-category="ma-iluminacao" data-severity="1"><span class="report-icon-badge"><i class="fa-solid fa-lightbulb"></i></span> Iluminação ruim</button>
-            <button class="report-btn sev-2" data-category="suspeito" data-severity="2"><span class="report-icon-badge"><i class="fa-solid fa-user-secret"></i></span> Atividade suspeita</button>
-            <button class="report-btn sev-3" data-category="assalto" data-severity="3"><span class="report-icon-badge"><i class="fa-solid fa-triangle-exclamation"></i></span> Assalto / Roubo</button>
-            <button class="report-btn sev-3" data-category="acidente" data-severity="3"><span class="report-icon-badge"><i class="fa-solid fa-car-burst"></i></span> Acidente</button>
-            <button class="report-btn sev-2" data-category="via-bloqueada" data-severity="2"><span class="report-icon-badge"><i class="fa-solid fa-road-barrier"></i></span> Via bloqueada</button>
-            <button class="report-btn sev-1" data-category="radar" data-severity="1"><span class="report-icon-badge"><i class="fa-solid fa-camera-cctv"></i></span> Radar / Blitz</button>
+            <button class="report-btn sev-1" data-category="ma-iluminacao" data-severity="1"><i class="fa-solid fa-lightbulb"></i> Iluminação ruim</button>
+            <button class="report-btn sev-2" data-category="suspeito" data-severity="2"><i class="fa-solid fa-user-secret"></i> Atividade suspeita</button>
+            <button class="report-btn sev-3" data-category="assalto" data-severity="3"><i class="fa-solid fa-triangle-exclamation"></i> Assalto / Roubo</button>
+            <button class="report-btn sev-3" data-category="acidente" data-severity="3"><i class="fa-solid fa-car-burst"></i> Acidente</button>
+            <button class="report-btn sev-2" data-category="via-bloqueada" data-severity="2"><i class="fa-solid fa-road-barrier"></i> Via bloqueada</button>
+            <button class="report-btn sev-1" data-category="radar" data-severity="1"><i class="fa-solid fa-camera-cctv"></i> Radar / Blitz</button>
         </div>
         <button class="back-link-btn" id="reportCloseBtn"><i class="fa-solid fa-xmark"></i> Voltar para rota</button>
     </div>

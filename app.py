@@ -1,13 +1,15 @@
 import os
 import re
+import ssl
 import time
 import datetime
 import math
 import secrets
-import threading
 import smtplib
-from email.mime.text import MIMEText
+import threading
 from pathlib import Path
+from email.mime.text import MIMEText
+from email.utils import formataddr
 import requests
 from typing import List, Dict, Optional, Any, Tuple
 
@@ -95,18 +97,26 @@ class Config:
     OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "https://routing.openstreetmap.de")
     OSRM_TIMEOUT = float(os.getenv("OSRM_TIMEOUT", "8"))
 
-    # Origens autorizadas a chamar a API (CORS). Lista separada por vírgula.
-    # Nunca usar "*" — restrinja ao(s) domínio(s) reais do front-end.
-    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
-
-    # ---------- SMTP (envio do código OTP por email no cadastro) ----------
+    # Envio de email (código OTP de verificação no cadastro).
     SMTP_HOST = os.getenv("SMTP_HOST", "")
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER = os.getenv("SMTP_USER", "")
     SMTP_PASS = os.getenv("SMTP_PASS", "")
-    SMTP_USE_TLS = _bool_env("SMTP_USE_TLS", "true")
-    SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
-    OTP_TTL_MINUTES = int(os.getenv("OTP_TTL_MINUTES", "10"))
+    # "starttls" (porta 587, padrão), "ssl" (porta 465, conexão já criptografada) ou "none" (só testes locais).
+    SMTP_SECURITY = os.getenv("SMTP_SECURITY", "starttls").strip().lower()
+    SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "WeSafe")
+    SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "no-reply@wesafe.app"))
+    SMTP_TIMEOUT = float(os.getenv("SMTP_TIMEOUT", "10"))
+
+    # Se "true", devolve o código OTP na resposta da API (apenas para testar sem SMTP configurado).
+    # Trava adicional: mesmo que fique "true" por engano, é ignorado quando STRICT_SECRETS está ativo.
+    OTP_DEBUG_ECHO = _bool_env("OTP_DEBUG_ECHO", "false") and not STRICT_SECRETS
+    OTP_EXPIRATION_MINUTES = 10
+    OTP_RESEND_COOLDOWN_SECONDS = 30
+
+    # Origens autorizadas a chamar a API (CORS). Lista separada por vírgula.
+    # Nunca usar "*" — restrinja ao(s) domínio(s) reais do front-end.
+    CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -195,89 +205,6 @@ class RateLimiter:
             return True
 
 _rate_limiter = RateLimiter()
-
-# ============================================================
-# 📧 OTP — verificação de email no cadastro via SMTP
-# ============================================================
-
-class PendingRegistrationStore:
-    """
-    Guarda em memória os cadastros ainda não confirmados (aguardando código OTP).
-    Chave = email. Cada worker do gunicorn tem sua própria cópia em memória — em
-    produção com múltiplos workers, o ideal seria um backend compartilhado (Redis),
-    mas para um único processo/worker isso já resolve sem infraestrutura extra.
-    """
-    def __init__(self):
-        self._store: Dict[str, Dict[str, Any]] = {}
-        self._lock = threading.Lock()
-
-    def set(self, email: str, data: Dict[str, Any]):
-        with self._lock:
-            self._store[email] = data
-
-    def get(self, email: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            entry = self._store.get(email)
-            if entry and entry["expires_at"] < _utcnow():
-                del self._store[email]
-                return None
-            return entry
-
-    def delete(self, email: str):
-        with self._lock:
-            self._store.pop(email, None)
-
-
-_pending_registrations = PendingRegistrationStore()
-
-
-def _generate_otp_code() -> str:
-    return f"{secrets.randbelow(1_000_000):06d}"
-
-
-def send_otp_email(to_email: str, nome: str, code: str) -> None:
-    """
-    Envia o código OTP por SMTP usando as credenciais do .env (SMTP_HOST, SMTP_PORT,
-    SMTP_USER, SMTP_PASS, SMTP_USE_TLS, SMTP_FROM). Lança RuntimeError com mensagem
-    amigável caso o SMTP não esteja configurado ou o envio falhe.
-    """
-    host = app.config["SMTP_HOST"]
-    user = app.config["SMTP_USER"]
-    password = app.config["SMTP_PASS"]
-
-    if not host or not user or not password:
-        raise RuntimeError(
-            "SMTP não configurado no servidor (defina SMTP_HOST, SMTP_USER e SMTP_PASS no .env)."
-        )
-
-    subject = "Seu código de verificação WeSafe"
-    body = (
-        f"Olá{', ' + nome if nome else ''}!\n\n"
-        f"Seu código de verificação WeSafe é: {code}\n\n"
-        f"Esse código expira em {app.config['OTP_TTL_MINUTES']} minutos.\n"
-        f"Se você não solicitou este cadastro, apenas ignore este email.\n\n"
-        f"— Equipe WeSafe"
-    )
-
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = app.config["SMTP_FROM"] or user
-    msg["To"] = to_email
-
-    port = app.config["SMTP_PORT"]
-    use_tls = app.config["SMTP_USE_TLS"]
-
-    try:
-        with smtplib.SMTP(host, port, timeout=10) as server:
-            server.ehlo()
-            if use_tls:
-                server.starttls()
-                server.ehlo()
-            server.login(user, password)
-            server.sendmail(msg["From"], [to_email], msg.as_string())
-    except (smtplib.SMTPException, OSError) as exc:
-        app.logger.error(f"Falha ao enviar email OTP para {to_email}: {exc}")
-        raise RuntimeError("Não foi possível enviar o código por email. Tente novamente em instantes.")
 
 def rate_limit(max_hits: int, window_seconds: int, scope: str):
     """Decorator: limita quantas requisições um mesmo IP pode fazer numa rota sensível."""
@@ -428,6 +355,22 @@ class User(db.Model):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+class PendingSignup(db.Model):
+    """Cadastro em andamento aguardando confirmação do código OTP enviado por email."""
+    __tablename__ = "pending_signups"
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    nome = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    otp_hash = db.Column(db.String(255), nullable=False)
+    otp_expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    last_sent_at = db.Column(db.DateTime, nullable=False, default=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
 
 class Report(db.Model):
     __tablename__ = "reports"
@@ -964,6 +907,87 @@ def find_safest_route(origin: List[float], destination: List[float], profile: st
     }
 
 # ============================================================
+# ✉️ OTP — verificação de email no cadastro
+# ============================================================
+
+def generate_otp_code() -> str:
+    """Gera um código numérico de 4 dígitos criptograficamente seguro."""
+    return f"{secrets.randbelow(10000):04d}"
+
+def hash_otp_code(code: str) -> str:
+    return bcrypt.generate_password_hash(code).decode("utf-8")
+
+def check_otp_code(otp_hash: str, code: str) -> bool:
+    try:
+        return bcrypt.check_password_hash(otp_hash, code)
+    except ValueError:
+        return False
+
+def send_otp_email(to_email: str, nome: str, code: str) -> bool:
+    """Envia o código OTP por email via SMTP. Retorna True se o envio foi concluído com sucesso."""
+    host = app.config["SMTP_HOST"]
+    if not host:
+        # Em produção (STRICT_SECRETS) nunca logamos o código em texto puro, mesmo sem SMTP —
+        # isso evitaria o próprio propósito do OTP se alguém tiver acesso aos logs.
+        if STRICT_SECRETS:
+            app.logger.error("SMTP não configurado — não é possível enviar código de verificação.")
+        else:
+            app.logger.warning(f"[DEV] SMTP não configurado — código OTP para {to_email}: {code}")
+        return False
+
+    # Defesa em profundidade: mesmo já validado antes de chegar aqui, nunca construímos
+    # uma mensagem de email com um destinatário que não passe numa validação estrita.
+    if not is_valid_email(to_email):
+        app.logger.error("Tentativa de enviar OTP para endereço de email inválido, bloqueado.")
+        return False
+
+    # Remove quebras de linha/caracteres de controle do nome antes de colocá-lo no corpo
+    # do email (defesa extra contra injeção de conteúdo, mesmo não indo em cabeçalho).
+    safe_nome = re.sub(r"[\r\n\x00]", " ", (nome or "guardião(ã)")).strip()[:100]
+
+    subject = "Seu código de verificação WeSafe"
+    body = (
+        f"Olá, {safe_nome}!\n\n"
+        f"Seu código de verificação WeSafe é: {code}\n\n"
+        f"Ele expira em {app.config['OTP_EXPIRATION_MINUTES']} minutos. "
+        f"Se você não solicitou este código, apenas ignore este email — sua conta continua segura.\n\n"
+        f"— Equipe WeSafe"
+    )
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = formataddr((app.config["SMTP_FROM_NAME"], app.config["SMTP_FROM_EMAIL"]))
+    msg["To"] = to_email
+
+    port = app.config["SMTP_PORT"]
+    timeout = app.config["SMTP_TIMEOUT"]
+    security = app.config["SMTP_SECURITY"]
+    # Contexto TLS com verificação de certificado habilitada (padrão seguro do módulo ssl) —
+    # evita ataques man-in-the-middle na conexão com o servidor SMTP.
+    tls_context = ssl.create_default_context()
+
+    try:
+        if security == "ssl":
+            server = smtplib.SMTP_SSL(host, port, timeout=timeout, context=tls_context)
+        else:
+            server = smtplib.SMTP(host, port, timeout=timeout)
+
+        with server:
+            if security == "starttls":
+                server.starttls(context=tls_context)
+            if app.config["SMTP_USER"]:
+                server.login(app.config["SMTP_USER"], app.config["SMTP_PASS"])
+            server.sendmail(app.config["SMTP_FROM_EMAIL"], [to_email], msg.as_string())
+        return True
+
+    except smtplib.SMTPAuthenticationError:
+        app.logger.error("Falha de autenticação SMTP — verifique SMTP_USER/SMTP_PASS.")
+        return False
+    except (smtplib.SMTPException, OSError, TimeoutError) as e:
+        # Loga o tipo do erro sem incluir o código OTP nem stack trace completo com dados sensíveis.
+        app.logger.error(f"Falha ao enviar OTP por email ({type(e).__name__}).")
+        return False
+
+# ============================================================
 # ⚙️ ROTAS / PÁGINAS (FRONTEND)
 # ============================================================
 
@@ -1019,14 +1043,10 @@ def status():
 
 # ---------- AUTH ----------
 
-@app.post("/api/register", endpoint="api_register")
-@rate_limit(max_hits=10, window_seconds=600, scope="register")
-def register():
-    """
-    Passo 1 do cadastro: valida os dados, gera um código OTP de 6 dígitos e o envia
-    por email via SMTP. A conta só é criada de fato em /api/register/verify-otp,
-    depois que o código correto é confirmado.
-    """
+@app.post("/api/register/request-otp", endpoint="api_register_request_otp")
+@rate_limit(max_hits=5, window_seconds=600, scope="register_otp")
+def register_request_otp():
+    """Etapa 1 do cadastro: valida os dados e envia um código OTP de 4 dígitos para o email."""
     data = request.get_json() or {}
     nome = re.sub(r"[\r\n\x00]", " ", (data.get("nome") or "")).strip()[:100]
     email = (data.get("email") or "").strip().lower()
@@ -1044,31 +1064,45 @@ def register():
     if db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none():
         raise APIError("Email já registrado.", 409)
 
-    code = _generate_otp_code()
+    pending = db.session.execute(db.select(PendingSignup).filter_by(email=email)).scalar_one_or_none()
+
+    now = _utcnow()
+    if pending and (now - pending.last_sent_at).total_seconds() < app.config["OTP_RESEND_COOLDOWN_SECONDS"]:
+        wait_s = int(app.config["OTP_RESEND_COOLDOWN_SECONDS"] - (now - pending.last_sent_at).total_seconds())
+        raise APIError(f"Aguarde {wait_s}s antes de reenviar o código.", 429)
+
+    code = generate_otp_code()
+    expires_at = now + datetime.timedelta(minutes=app.config["OTP_EXPIRATION_MINUTES"])
+
+    if not pending:
+        pending = PendingSignup(email=email)
+        db.session.add(pending)
+
+    pending.nome = nome or "Usuário WeSafe"
+    pending.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
+    pending.otp_hash = hash_otp_code(code)
+    pending.otp_expires_at = expires_at
+    pending.attempts = 0
+    pending.last_sent_at = now
+
     try:
-        send_otp_email(email, nome, code)
-    except RuntimeError as exc:
-        raise APIError(str(exc), 502)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise APIError("Erro interno ao preparar o cadastro.", 500)
 
-    _pending_registrations.set(email, {
-        "nome": nome or "Usuário WeSafe",
-        "password_hash": bcrypt.generate_password_hash(password).decode("utf-8"),
-        "code": code,
-        "attempts": 0,
-        "expires_at": _utcnow() + datetime.timedelta(minutes=app.config["OTP_TTL_MINUTES"]),
-    })
+    email_sent = send_otp_email(email, pending.nome, code)
 
-    return jsonify({
-        "message": "Enviamos um código de verificação para o seu email.",
-        "email": email,
-        "expires_in_minutes": app.config["OTP_TTL_MINUTES"],
-    }), 200
+    response_payload = {"message": "Código enviado para o seu email.", "email_sent": email_sent}
+    if app.config["OTP_DEBUG_ECHO"]:
+        response_payload["debug_otp_code"] = code
+    return jsonify(response_payload), 200
 
 
 @app.post("/api/register/verify-otp", endpoint="api_register_verify_otp")
-@rate_limit(max_hits=10, window_seconds=600, scope="register_verify")
+@rate_limit(max_hits=10, window_seconds=600, scope="verify_otp")
 def register_verify_otp():
-    """Passo 2 do cadastro: confirma o código OTP e cria a conta definitivamente."""
+    """Etapa 2 do cadastro: confirma o código OTP e cria a conta definitivamente."""
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     code = (data.get("code") or "").strip()
@@ -1076,33 +1110,36 @@ def register_verify_otp():
     if not email or not code:
         raise APIError("Email e código são obrigatórios.", 400)
 
-    pending = _pending_registrations.get(email)
+    pending = db.session.execute(db.select(PendingSignup).filter_by(email=email)).scalar_one_or_none()
     if not pending:
-        raise APIError("Código expirado ou não encontrado. Solicite um novo cadastro.", 400)
+        raise APIError("Nenhum cadastro pendente para este email. Solicite um novo código.", 404)
 
-    if pending["attempts"] >= 5:
-        _pending_registrations.delete(email)
-        raise APIError("Número máximo de tentativas excedido. Solicite um novo código.", 429)
+    if _utcnow() > pending.otp_expires_at:
+        raise APIError("Código expirado. Solicite um novo código.", 410)
 
-    if code != pending["code"]:
-        pending["attempts"] += 1
+    if pending.attempts >= 5:
+        raise APIError("Muitas tentativas inválidas. Solicite um novo código.", 429)
+
+    if not check_otp_code(pending.otp_hash, code):
+        pending.attempts += 1
+        db.session.commit()
         raise APIError("Código inválido.", 400)
 
     if db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none():
-        _pending_registrations.delete(email)
+        db.session.delete(pending)
+        db.session.commit()
         raise APIError("Email já registrado.", 409)
 
-    user = User(email=email, nome=pending["nome"])
-    user.password_hash = pending["password_hash"]
+    user = User(email=email, nome=pending.nome)
+    user.password_hash = pending.password_hash  # já é um hash bcrypt válido
 
     try:
         db.session.add(user)
+        db.session.delete(pending)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         raise APIError("Erro interno ao salvar usuário.", 500)
-
-    _pending_registrations.delete(email)
 
     token = create_access_token(identity=str(user.id), additional_claims={"is_admin": user.is_admin})
 
@@ -1112,37 +1149,6 @@ def register_verify_otp():
         "user_id": user.id,
         "profile": user.to_profile_dict(),
     }), 201
-
-
-@app.post("/api/register/resend-otp", endpoint="api_register_resend_otp")
-@rate_limit(max_hits=5, window_seconds=600, scope="register_resend")
-def register_resend_otp():
-    """Reenvia um novo código OTP para um cadastro ainda pendente."""
-    data = request.get_json() or {}
-    email = (data.get("email") or "").strip().lower()
-
-    if not email or not is_valid_email(email):
-        raise APIError("Email inválido.", 400)
-
-    pending = _pending_registrations.get(email)
-    if not pending:
-        raise APIError("Nenhum cadastro pendente encontrado para este email.", 400)
-
-    code = _generate_otp_code()
-    try:
-        send_otp_email(email, pending["nome"], code)
-    except RuntimeError as exc:
-        raise APIError(str(exc), 502)
-
-    pending["code"] = code
-    pending["attempts"] = 0
-    pending["expires_at"] = _utcnow() + datetime.timedelta(minutes=app.config["OTP_TTL_MINUTES"])
-    _pending_registrations.set(email, pending)
-
-    return jsonify({
-        "message": "Novo código enviado.",
-        "expires_in_minutes": app.config["OTP_TTL_MINUTES"],
-    }), 200
 
 
 @app.post("/api/login", endpoint="api_login")
@@ -1563,6 +1569,19 @@ def init_db_command():
 with app.app_context():
     db.create_all()
     seed_admin_user()
+
+    # Diagnóstico de startup: mostra SE o SMTP foi carregado do .env, nunca a senha em si.
+    if app.config["SMTP_HOST"]:
+        app.logger.info(
+            f"SMTP configurado: host={app.config['SMTP_HOST']} porta={app.config['SMTP_PORT']} "
+            f"user={app.config['SMTP_USER'] or '(vazio)'} seguranca={app.config['SMTP_SECURITY']}"
+        )
+    else:
+        app.logger.warning(
+            f"SMTP_HOST está vazio — o backend NÃO vai enviar OTP por email. "
+            f"Arquivo .env procurado em: {_ENV_PATH} (existe: {_ENV_PATH.exists()}). "
+            f"Confirme que SMTP_HOST está definido exatamente nesse arquivo."
+        )
 
 if __name__ == "__main__":
     debug_mode = os.getenv("FLASK_DEBUG", "false").strip().lower() in ("1", "true", "yes")
